@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('last_login_at')->nullable();
             $table->string('role');
+            $table->uuid('department_id')->nullable();
             $table->string('institute_id')->nullable();
             $table->boolean('is_active')->default(true);
             $table->string('avatar')->nullable();

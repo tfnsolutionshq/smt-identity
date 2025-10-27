@@ -30,7 +30,7 @@ class UserController extends Controller
 
     public function byInstitute(Request $request)
     {
-        return $this->users->getByInstitute($request->institute_id);
+        return $this->users->getByInstitution();
     }
 
     public function show($id)

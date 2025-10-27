@@ -3,6 +3,8 @@
 use App\Http\Controllers\v1\AuthController;
 use App\Http\Controllers\v1\DepartmentController;
 use App\Http\Controllers\v1\InstitutionController;
+use App\Http\Controllers\v1\PermissionController;
+use App\Http\Controllers\v1\RoleController;
 use App\Http\Controllers\v1\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -13,7 +15,7 @@ Route::prefix('v1/')->group(function () {
     Route::post('reset-password-request', [AuthController::class, 'resetPasswordRequest']);
     Route::post('reset-password', [AuthController::class, 'resetPassword']);
 
-     Route::middleware(['auth:sanctum'])->group(function () {
+    Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
 
         // group users and prefix by users
@@ -41,9 +43,24 @@ Route::prefix('v1/')->group(function () {
             Route::delete('/{id}', [DepartmentController::class, 'destroy']);
         });
 
+        Route::prefix('roles')->group(function () {
+            Route::get('/', [RoleController::class, 'index']);
+            Route::get('/{role}', [RoleController::class, 'show']);
+            Route::post('/', [RoleController::class, 'store']);
+            Route::put('/{role}', [RoleController::class, 'update']); // Changed {id} to {role}
+            Route::delete('/{role}', [RoleController::class, 'destroy']); // Changed {id} to {role}
+        });
+
+        Route::prefix('permissions')->group(function () {
+            Route::get('/', [PermissionController::class, 'index']);
+            Route::get('/{id}', [PermissionController::class, 'show']);
+            Route::post('/', [PermissionController::class, 'store']);
+            Route::put('/{permission}', [PermissionController::class, 'update']);
+            Route::delete('/{permission}', [PermissionController::class, 'destroy']);
+        });
+
+
+
 
     });
-
-
 });
-

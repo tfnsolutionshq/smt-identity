@@ -43,11 +43,7 @@ class InstitutionController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors(),
-            ], 422);
+            return $this->errorResponse('Validation failed', 422, $validator->errors());
         }
 
         try {

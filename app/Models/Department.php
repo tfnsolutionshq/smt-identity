@@ -15,6 +15,9 @@ class Department extends Model
         'id',
         'name',
         'institution_id',
+        'department_code',
+        'head_id',
+        'description',
         'is_active',
     ];
 

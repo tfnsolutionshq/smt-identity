@@ -9,19 +9,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Facades\Auth;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable, HasUuids;
+
     public $incrementing = false;
     protected $keyType = 'string';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'first_name',
         'middle_name',
@@ -29,28 +25,18 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
-        'institute_id',
+        'institution_id',
         'is_active',
         'avatar',
         'last_login_at',
         'email_verified_at',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -59,23 +45,39 @@ class User extends Authenticatable
         ];
     }
 
+    /** Filter by active users */
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
 
+    /** Filter by specific role */
     public function scopeRole($query, $role)
     {
         return $query->where('role', $role);
     }
 
-    public function scopeSameInstitute($query)
+    /** Filter users belonging to same institution as the logged-in user */
+    public function scopeSameInstitution($query)
     {
-        return $query->where('institute_id', auth()->user()->institute_id);
-    }
-    public function scopeExcludeCurrentUser($query)
-    {
-        return $query->where('id', '!=', auth()->id());
+        return $query->where('institution_id', Auth::user()->institution_id);
     }
 
+    /** Exclude the current user */
+    public function scopeExcludeCurrentUser($query)
+    {
+        return $query->where('id', '!=', Auth::id());
+    }
+
+    /** Relationship to Institution */
+    public function institution()
+    {
+        return $this->belongsTo(Institution::class);
+    }
+
+    public function myInstitutionID()
+    {
+        return Auth::user()->institution_id;
+    }
 }
+

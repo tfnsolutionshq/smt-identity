@@ -4,8 +4,10 @@ namespace App\Http\Controllers\v1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Department;
+use App\Models\User;
 use Illuminate\Http\Request;
 use App\Traits\ApiResponse;
+use Illuminate\Support\Facades\Auth;
 
 class DepartmentController extends Controller
 {
@@ -23,11 +25,13 @@ class DepartmentController extends Controller
         return $this->successResponse($departments, 'departments fetched successfully');
     }
 
-    public function store(Request $request)
+    public function store(Request $request, User $user)
     {
         $validator = app('validator')->make($request->all(), [
             'name' => 'required|string|max:255',
-            'institution_id' => 'required|exists:institutions,id',
+            'department_code' => 'required|string|max:255',
+            'description' => 'required|string|max:255',
+            'head_id' => 'required|exists:users,id',
         ]);
 
         if ($validator->fails()) {
@@ -39,7 +43,9 @@ class DepartmentController extends Controller
         }
 
         try {
-            $department = Department::create($validator->validated());
+            $validatedData = $validator->validated();
+            $validatedData['institution_id'] = $user->myInstitutionID();
+            $department = Department::create($validatedData);
             return $this->successResponse($department, 'department created successfully', 201);
         } catch (\Exception $e) {
             return $this->errorResponse('Failed to create department: ' . $e->getMessage(), 500);
@@ -58,9 +64,15 @@ class DepartmentController extends Controller
 
     public function update(Request $request)
     {
-        $department = Department::findOrFail($request->id);
+        $department = Department::find($request->department_id);
+        if (!$department) {
+            return $this->errorResponse('Department not found', 404);
+        }
         $validator = app('validator')->make($request->all(), [
-            'name' => 'required|string|max:255'
+            'name' => 'required|string|max:255',
+            'department_code' => 'required|string|max:255',
+            'head_id' => 'required|exists:users,id',
+            'description' => 'required|string|max:255',
         ]);
 
         if ($validator->fails()) {

@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use App\Traits\ApiResponse;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
@@ -18,7 +20,7 @@ class UserController extends Controller
         $this->users = $users;
     }
 
-    public function index(Request $request)
+    public function index(Request $request, User $user)
     {
         return $this->users->getAll($request);
     }
@@ -33,33 +35,39 @@ class UserController extends Controller
         return $this->users->getByInstitution();
     }
 
-    public function show($id)
+    public function show($id, $auth_user = null)
     {
-        return $this->users->getUser($id);
+        return $this->users->getUser($id, $auth_user);
     }
 
-    public function update(Request $request){
-
-    }
+    public function update(Request $request) {}
 
     public function userStatistics()
     {
-        $totalUsers = User::sameInstitute()->count();
-        $activeUsers = User::sameInstitute()->active()->count();
-
-        // Count users grouped by role
-        $usersByRole = User::sameInstitute()
-            ->selectRaw('role, COUNT(*) as count')
-            ->groupBy('role')
-            ->pluck('count', 'role');
-
-        return $this->successResponse([
-            'totalUsers' => $totalUsers,
-            'activeUsers' => $activeUsers,
-            'usersByRole' => $usersByRole,
-        ], 'User statistics fetched successfully');
+        return $this->users->getUserStatistics();
     }
 
+    public function verifyRecipients(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'emails' => 'required|array',
+            'emails.*' => 'required|email',
+            'institution_id' => 'required',
+        ]);
 
+        if ($validator->fails()) {
+            return response()->json([
+                'errors' => $validator->errors(),
+            ], 422);
+        }
 
+        $users = User::where('institution_id', $request->institution_id)
+            ->whereIn('email', $request->emails)
+            ->get(['id', 'email', 'first_name', 'last_name']);
+
+        return response()->json([
+            'valid_recipients' => $users,
+            'invalid_emails' => array_diff($request->emails, $users->pluck('email')->toArray()),
+        ]);
+    }
 }

@@ -96,4 +96,23 @@ class DepartmentController extends Controller
         return $this->successResponse($department, 'Department deleted successfully');
     }
 
+    // Add this method to your DepartmentController
+    public function statistics(Request $request)
+    {
+        try {
+            $institutionId = $request->user()->myInstitutionID(); // Adjust based on your auth method
+
+            $totalDepartments = Department::where('institution_id', $institutionId)->count();
+            $activeDepartments = Department::where('institution_id', $institutionId)
+                ->where('is_active', true)
+                ->count();
+
+            return $this->successResponse([
+                'total_departments' => $totalDepartments,
+                'active_departments' => $activeDepartments,
+            ], 'Department statistics fetched successfully');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to fetch department statistics: ' . $e->getMessage(), 500);
+        }
+    }
 }

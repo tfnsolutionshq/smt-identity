@@ -57,10 +57,22 @@ class User extends Authenticatable
         return $query->where('role', $role);
     }
 
-    /** Filter users belonging to same institution as the logged-in user */
-    public function scopeSameInstitution($query)
+     /** Filter users belonging to same institution as the logged-in user */
+    public function scopeSameInstitution($query, $institutionId = null)
     {
-        return $query->where('institution_id', Auth::user()->institution_id);
+        // If institutionId is provided, use it
+        if ($institutionId !== null) {
+            return $query->where('institution_id', $institutionId);
+        }
+
+        // Otherwise, use the logged-in user's institution_id
+        $authInstitutionId = Auth::check() ? Auth::user()->institution_id : null;
+
+        if (!$authInstitutionId) {
+            return $query;
+        }
+
+        return $query->where('institution_id', $authInstitutionId);
     }
 
     /** Exclude the current user */
@@ -80,4 +92,3 @@ class User extends Authenticatable
         return Auth::user()->institution_id;
     }
 }
-

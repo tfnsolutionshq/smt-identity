@@ -22,7 +22,7 @@ class Role extends Model
 
     public function scopeSameInstitute($query)
     {
-        return $query->where('institution_id', Auth::user()->institute_id);
+        return $query->where('institution_id', Auth::user()->institution_id);
     }
 
 

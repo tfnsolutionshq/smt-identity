@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\v1\RolePermissionController;
 use App\Http\Controllers\v1\AuthController;
 use App\Http\Controllers\v1\DepartmentController;
 use App\Http\Controllers\v1\InstitutionController;
 use App\Http\Controllers\v1\PermissionController;
 use App\Http\Controllers\v1\RoleController;
+use App\Http\Controllers\v1\AdminAnalyticsController;
 use App\Http\Controllers\v1\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -41,6 +43,16 @@ Route::prefix('v1/')->group(function () {
 
     Route::middleware(['auth:sanctum'])->group(function () {
 
+        Route::prefix('analytics/')->group(function () { // Admin analytics
+            Route::get('roles-with-permissions-and-users', [AdminAnalyticsController::class, 'rolesWithPermissionsAndUsers']);
+            Route::get('permission-statistics', [AdminAnalyticsController::class, 'permissionsWithRoleCounts']);
+            Route::get('totals', [AdminAnalyticsController::class, 'analytics']);
+            Route::get('users-with-stats', [AdminAnalyticsController::class, 'usersWithStats']);
+            Route::get('department-statistics', [AdminAnalyticsController::class, 'departmentOverview']);
+        });
+
+
+
 
         Route::post('logout', [AuthController::class, 'logout']);
 
@@ -63,6 +75,7 @@ Route::prefix('v1/')->group(function () {
 
         Route::prefix('departments')->group(function () {
             Route::get('/', [DepartmentController::class, 'index']);
+            Route::get('/statistics', [DepartmentController::class, 'statistics']);
             Route::get('/{id}', [DepartmentController::class, 'show']);
             Route::post('/', [DepartmentController::class, 'store']);
             Route::put('/{id}', [DepartmentController::class, 'update']);
@@ -75,6 +88,17 @@ Route::prefix('v1/')->group(function () {
             Route::post('/', [RoleController::class, 'store']);
             Route::put('/{role}', [RoleController::class, 'update']); // Changed {id} to {role}
             Route::delete('/{role}', [RoleController::class, 'destroy']); // Changed {id} to {role}
+
+            Route::prefix('{roleId}/permissions')->group(function () {
+                Route::get('/', [RolePermissionController::class, 'getRolePermissions']);
+                Route::post('/assign', [RolePermissionController::class, 'assignPermissions']);
+                Route::put('/sync', [RolePermissionController::class, 'syncPermissions']);
+                Route::delete('/remove', [RolePermissionController::class, 'removePermissions']);
+                Route::post('/bulk', [RolePermissionController::class, 'bulkOperations']);
+            });
+
+            // Available permissions
+            Route::get('/permissions/available', [RolePermissionController::class, 'getAllPermissions']);
         });
 
         Route::prefix('permissions')->group(function () {

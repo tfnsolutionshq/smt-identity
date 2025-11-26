@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1/')->group(function () {
 
     Route::middleware('auth:sanctum')->get('users/me', function (Request $request) {
-        return response()->json($request->user());
+        $user = $request->user()->load(['department', 'role']);
+        return response()->json($user);
     });
 
     Route::post('users/verify-recipients', [UserController::class, 'verifyRecipients']);
@@ -25,6 +26,7 @@ Route::prefix('v1/')->group(function () {
 
     // Route::get('/users', [UserController::class, 'index']);
     // Route::get('/users/{id}', [UserController::class, 'show']);
+
 
 
     Route::post('login', [AuthController::class, 'login']);
@@ -42,7 +44,7 @@ Route::prefix('v1/')->group(function () {
     // });
 
     Route::middleware(['auth:sanctum'])->group(function () {
-
+        Route::post('register', [AuthController::class, 'register']);
         Route::prefix('analytics/')->group(function () { // Admin analytics
             Route::get('roles-with-permissions-and-users', [AdminAnalyticsController::class, 'rolesWithPermissionsAndUsers']);
             Route::get('permission-statistics', [AdminAnalyticsController::class, 'permissionsWithRoleCounts']);
@@ -50,9 +52,6 @@ Route::prefix('v1/')->group(function () {
             Route::get('users-with-stats', [AdminAnalyticsController::class, 'usersWithStats']);
             Route::get('department-statistics', [AdminAnalyticsController::class, 'departmentOverview']);
         });
-
-
-
 
         Route::post('logout', [AuthController::class, 'logout']);
 
@@ -112,4 +111,6 @@ Route::prefix('v1/')->group(function () {
         Route::get('/users/statistics', [UserController::class, 'userStatistics']);
         Route::get('/departments/statistics', [DepartmentController::class, 'statistics']);
     });
+
+
 });

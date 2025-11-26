@@ -24,8 +24,9 @@ class User extends Authenticatable
         'last_name',
         'email',
         'password',
-        'role',
+        'role_id',
         'institution_id',
+        'department_id',
         'is_active',
         'avatar',
         'last_login_at',
@@ -54,7 +55,7 @@ class User extends Authenticatable
     /** Filter by specific role */
     public function scopeRole($query, $role)
     {
-        return $query->where('role', $role);
+        return $query->where('role_id', $role);
     }
 
      /** Filter users belonging to same institution as the logged-in user */
@@ -95,5 +96,10 @@ class User extends Authenticatable
     public function department()
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function role()
+    {
+        return $this->belongsTo(Role::class);
     }
 }

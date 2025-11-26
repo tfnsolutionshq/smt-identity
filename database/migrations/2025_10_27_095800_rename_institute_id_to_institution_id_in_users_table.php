@@ -12,6 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
+            // Rename institute_id to institution_id
+            $table->renameColumn('institute_id', 'institution_id');
+        });
+        
+        Schema::table('users', function (Blueprint $table) {
             // Change the column type to match the institutions table (assuming it's uuid)
             $table->uuid('institution_id')->nullable()->change();
 

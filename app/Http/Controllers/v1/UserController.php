@@ -30,6 +30,11 @@ class UserController extends Controller
         return $this->users->getByRole($role);
     }
 
+    public function byDepartment($departmentId)
+    {
+        return $this->users->getByDepartment($departmentId);
+    }
+
     public function byInstitute(Request $request)
     {
         return $this->users->getByInstitution();

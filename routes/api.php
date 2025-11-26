@@ -61,6 +61,8 @@ Route::prefix('v1/')->group(function () {
             Route::get('/institute', [UserController::class, 'byInstitute'])->middleware('auth:sanctum');
             Route::get('/statistics', [UserController::class, 'userStatistics'])->middleware('auth:sanctum');
             Route::get('/roles/{role}', [UserController::class, 'byRole'])->middleware('auth:sanctum');
+            Route::get('/departments/{departmentId}', [UserController::class, 'byDepartment']);
+            Route::put('/{id}', [UserController::class, 'update']);
             Route::get('/{id}', [UserController::class, 'show']);
         });
 

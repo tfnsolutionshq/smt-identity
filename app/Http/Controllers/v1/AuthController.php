@@ -88,13 +88,40 @@ class AuthController extends Controller
         $user->update(['last_login_at' => now()]);
 
         $token = $user->createToken('auth')->plainTextToken;
-        $user->load(['department', 'role']);
+        $user->load(['department']);
 
         $this->logLogin($user, 'email_password');
 
+        // Get role name and add it to user data
+        $role = $user->role->name;
+
+        // Prepare user data without the relationship
+        $userData = $user->toArray();
+        $userData['role'] = $role; // Add role as string
+        unset($userData['role']); // Remove the role relationship if it exists
+
+        // If you want to be more explicit, you can manually select the fields:
+        $userData = [
+            'id' => $user->id,
+            'first_name' => $user->first_name,
+            'middle_name' => $user->middle_name,
+            'last_name' => $user->last_name,
+            'email' => $user->email,
+            'last_login_at' => $user->last_login_at,
+            'department_id' => $user->department_id,
+            'institution_id' => $user->institution_id,
+            'is_active' => $user->is_active,
+            'avatar' => $user->avatar,
+            'email_verified_at' => $user->email_verified_at,
+            'created_at' => $user->created_at,
+            'updated_at' => $user->updated_at,
+            'department' => $user->department,
+            'role' => strtolower($role), // Just the role name as string
+        ];
+
         return $this->successResponse([
             'token' => $token,
-            'user' => $user
+            'user' => $userData
         ], 'Logged in successfully');
     }
 

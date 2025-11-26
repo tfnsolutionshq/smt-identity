@@ -45,7 +45,10 @@ class UserController extends Controller
         return $this->users->getUser($id, $auth_user);
     }
 
-    public function update(Request $request) {}
+    public function update(Request $request, $id)
+    {
+        return $this->users->updateUser($request, $id);
+    }
 
     public function userStatistics()
     {

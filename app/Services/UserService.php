@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Traits\ApiResponse;
 use App\Services\MemoService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 
 class UserService
 {
@@ -113,5 +114,38 @@ class UserService
             'activeUsers' => $activeUsers,
             'usersByRole' => $usersByRole,
         ], 'User statistics fetched successfully');
+    }
+
+    public function updateUser($request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'first_name' => 'sometimes|string|max:255',
+            'last_name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|email|unique:users,email,' . $id,
+            'department_id' => 'sometimes|exists:departments,id',
+            'role_id' => 'sometimes|exists:roles,id',
+            'is_active' => 'sometimes|boolean'
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse($validator->errors()->first(), 422);
+        }
+
+        $user = User::sameInstitution()->find($id);
+        if (!$user) {
+            return $this->errorResponse('User not found', 404);
+        }
+
+        $user->update($request->only([
+            'first_name', 'middle_name', 'last_name', 'email', 
+            'department_id', 'role_id', 'is_active'
+        ]));
+
+        $user->load(['department', 'role']);
+        $user->role = strtolower($user->role->name);
+        unset($user->role_id);
+        $user->approval_stats = $this->memoService->getUserApprovalStats($user->id);
+
+        return $this->successResponse($user, 'User updated successfully');
     }
 }

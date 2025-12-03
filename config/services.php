@@ -41,6 +41,9 @@ return [
     'setting' => [
         'base_url' => env('SETTING_SERVICE_BASE_URL', 'http://127.0.0.1:8002/api/v1'),
     ],
+    'notification' => [
+        'base_url' => env('NOTIFICATION_SERVICE_BASE_URL', 'http://127.0.0.1:8003/api/v1'),
+    ],
     'api_key' => env('SERVICE_API_KEY', 'default-secret-key-123'),
 
 

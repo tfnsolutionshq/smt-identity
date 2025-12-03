@@ -8,6 +8,7 @@ use App\Http\Controllers\v1\PermissionController;
 use App\Http\Controllers\v1\RoleController;
 use App\Http\Controllers\v1\AdminAnalyticsController;
 use App\Http\Controllers\v1\UserController;
+use App\Http\Controllers\v1\S2SController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -15,6 +16,15 @@ use Illuminate\Support\Facades\Route;
 
 
 Route::prefix('v1/')->group(function () {
+
+    // S2S Authentication Routes
+    Route::middleware('s2s')->prefix('s2s')->group(function () {
+        Route::post('validate-user', [S2SController::class, 'validateUser']);
+        Route::post('users-by-role', [S2SController::class, 'getUsersByRole']);
+        Route::post('users-by-department', [S2SController::class, 'getUsersByDepartment']);
+        Route::post('user-by-id', [S2SController::class, 'getUserById']);
+        Route::post('users-by-ids', [S2SController::class, 'getUsersByIds']);
+    });
 
     Route::middleware('auth:sanctum')->get('users/me', function (Request $request) {
         $user = $request->user()->load(['department', 'role']);
@@ -32,6 +42,24 @@ Route::prefix('v1/')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
     Route::post('reset-password-request', [AuthController::class, 'resetPasswordRequest']);
     Route::post('reset-password', [AuthController::class, 'resetPassword']);
+
+    Route::get('test-notification', function() {
+        try {
+            $baseUrl = rtrim(config('services.notification.base_url', ''), '/');
+            $url = "{$baseUrl}/test";
+
+            $response = \Illuminate\Support\Facades\Http::get($url);
+
+            return response()->json([
+                'config_url' => config('services.notification.base_url'),
+                'final_url' => $url,
+                'status' => $response->status(),
+                'body' => $response->body()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()]);
+        }
+    });
 
 
     // Route::prefix('users')->group(function () {

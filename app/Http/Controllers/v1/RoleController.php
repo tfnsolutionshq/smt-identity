@@ -50,11 +50,17 @@ class RoleController extends Controller
             return $this->errorResponse('Failed to create role: ' . $e->getMessage(), 500);
         }
     }
-    public function show(Role $role)
+    public function show($id)
     {
-        $role->load('permissions'); // Eager load permissions
+        $role = Role::with('permissions')->find($id);
+
+        if (! $role) {
+            return $this->errorResponse('Role not found', 404);
+        }
+
         return $this->successResponse($role, 'Role fetched successfully');
     }
+
 
     public function update(Request $request, Role $role)
     {

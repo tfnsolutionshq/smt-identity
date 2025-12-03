@@ -14,10 +14,16 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use App\Traits\LogsActivity;
 use Illuminate\Support\Facades\Log;
+use App\Traits\NotifyTrait;
 
 class AuthController extends Controller
 {
-    use ApiResponse, LogsActivity;
+    use ApiResponse, LogsActivity , NotifyTrait;
+
+    protected function getServiceName(): string
+    {
+        return 'identity';
+    }
 
     public function register(Request $request)
     {
@@ -88,9 +94,15 @@ class AuthController extends Controller
         $user->update(['last_login_at' => now()]);
 
         $token = $user->createToken('auth')->plainTextToken;
-        $user->load(['department']);
+        $user->load(['department', 'role']);
 
         $this->logLogin($user, 'email_password');
+
+        $this->sendNotification('login', $user->email, [
+            'user_name' => $user->first_name . ' ' . $user->last_name,
+            'login_time' => now()->format('Y-m-d H:i:s'),
+            'ip_address' => $request->ip()
+        ]);
 
         // Get role name and add it to user data
         $role = $user->role->name;
@@ -135,24 +147,25 @@ class AuthController extends Controller
             return $this->errorResponse($validator->errors()->first(), 422);
         }
 
-        $validated = $validator->validated();
+        $user = User::where('email', $request->email)->first();
 
-        $status = Password::sendResetLink($validated);
-
-        if ($status === Password::RESET_LINK_SENT) {
-            $user = User::where('email', $validated['email'])->first();
-            if ($user) {
-                $this->logPasswordResetRequest($user);
-            }
-
-            return $this->successResponse([
-                'email' => $validated['email'],
-            ], __($status));
-        } else {
-            $this->logPasswordResetFailed($validated['email'], $status);
-
-            return $this->errorResponse(__($status), 400);
+        if (!$user) {
+            return $this->errorResponse('User not found', 404);
         }
+
+        $token = Password::createToken($user);
+
+        $this->sendNotification('reset_password_request', $user->email, [
+            'user_name' => $user->first_name . ' ' . $user->last_name,
+            'reset_token' => $token,
+            'reset_url' => config('app.frontend_url') . '/reset-password?token=' . $token . '&email=' . urlencode($user->email)
+        ]);
+
+        $this->logPasswordResetRequest($user);
+
+        return $this->successResponse([
+            'email' => $user->email,
+        ], 'Password reset link sent successfully');
     }
 
     public function resetPassword(Request $request)

@@ -18,7 +18,6 @@ class MemoService
             }
 
             $url = config('services.memo.base_url') . "/analytics/user/{$userId}/approval-stats";
-            Log::info('MemoService: Calling URL', ['url' => $url, 'institution_id' => $user->institution_id]);
 
             $response = Http::withHeaders([
                 'X-API-Key' => config('services.api_key'),
@@ -26,8 +25,6 @@ class MemoService
                 'institution_id' => $user->institution_id,
                 'user_id' => $userId
             ]);
-
-            Log::info('MemoService: Response', ['status' => $response->status(), 'body' => $response->body()]);
 
             if ($response->successful()) {
                 $responseData = $response->json();

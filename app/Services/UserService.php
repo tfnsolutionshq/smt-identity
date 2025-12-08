@@ -122,6 +122,11 @@ class UserService
             'first_name' => 'sometimes|string|max:255',
             'last_name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|unique:users,email,' . $id,
+            'phone' => 'sometimes|nullable|string|max:20',
+            'location' => 'sometimes|nullable|string|max:255',
+            'bio' => 'sometimes|nullable|string',
+            'timezone' => 'sometimes|nullable|string|max:50',
+            'language' => 'sometimes|nullable|string|max:10',
             'department_id' => 'sometimes|exists:departments,id',
             'role_id' => 'sometimes|exists:roles,id',
             'is_active' => 'sometimes|boolean'
@@ -137,7 +142,8 @@ class UserService
         }
 
         $user->update($request->only([
-            'first_name', 'middle_name', 'last_name', 'email', 
+            'first_name', 'middle_name', 'last_name', 'email', 'phone',
+            'location', 'bio', 'timezone', 'language',
             'department_id', 'role_id', 'is_active'
         ]));
 

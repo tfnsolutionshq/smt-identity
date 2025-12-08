@@ -34,6 +34,11 @@ class AuthController extends Controller
             'password' => 'required|confirmed|min:8',
             'department_id' => 'required|exists:departments,id',
             'role_id' => 'required|exists:roles,id',
+            'phone' => 'nullable|string|max:20',
+            'location' => 'nullable|string|max:255',
+            'bio' => 'nullable|string',
+            'timezone' => 'nullable|string|max:50',
+            'language' => 'nullable|string|max:10',
         ]);
 
         if ($validator->fails()) {
@@ -45,10 +50,15 @@ class AuthController extends Controller
             'middle_name' => $request->middle_name,
             'last_name' => $request->last_name,
             'email' => $request->email,
+            'phone' => $request->phone,
             'password' => $request->password,
             'department_id' => $request->department_id,
             'role_id' => $request->role_id,
             'institution_id' => Auth::user()->institution_id,
+            'location' => $request->location,
+            'bio' => $request->bio,
+            'timezone' => $request->timezone,
+            'language' => $request->language,
             'is_active' => true
         ]);
 
@@ -129,6 +139,7 @@ class AuthController extends Controller
             'updated_at' => $user->updated_at,
             'department' => $user->department,
             'role' => strtolower($role), // Just the role name as string
+            "role_id" => $user->role_id,
         ];
 
         return $this->successResponse([

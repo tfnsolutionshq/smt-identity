@@ -9,6 +9,7 @@ use App\Http\Controllers\v1\RoleController;
 use App\Http\Controllers\v1\AdminAnalyticsController;
 use App\Http\Controllers\v1\UserController;
 use App\Http\Controllers\v1\S2SController;
+use App\Http\Controllers\v1\ProfileController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -72,6 +73,8 @@ Route::prefix('v1/')->group(function () {
     // });
 
     Route::middleware(['auth:sanctum'])->group(function () {
+        Route::post('profile', [ProfileController::class, 'update']);
+        Route::post('change-password', [ProfileController::class, 'changePassword']);
         Route::post('register', [AuthController::class, 'register']);
         Route::prefix('analytics/')->group(function () { // Admin analytics
             Route::get('roles-with-permissions-and-users', [AdminAnalyticsController::class, 'rolesWithPermissionsAndUsers']);

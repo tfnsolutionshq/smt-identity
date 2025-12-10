@@ -23,6 +23,7 @@ class UpdateProfileRequest extends FormRequest
             'timezone' => 'sometimes|nullable|string|max:50',
             'language' => 'sometimes|nullable|string|max:10',
             'signature' => 'sometimes|image|mimes:jpeg,png,jpg|max:2048',
+            'avatar' => 'sometimes|image|mimes:jpeg,png,jpg|max:2048',
         ];
     }
 }

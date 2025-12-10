@@ -25,6 +25,13 @@ class ProfileController extends Controller
             $data['signature'] = $request->file('signature')->store('signatures', 'public');
         }
 
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            $data['avatar'] = $request->file('avatar')->store('avatars', 'public');
+        }
+
         $user->update($data);
         $user->load(['department', 'role']);
 

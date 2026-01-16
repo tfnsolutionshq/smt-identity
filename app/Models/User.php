@@ -114,4 +114,14 @@ class User extends Authenticatable
     {
         return $date->format('Y-m-d H:i:s');
     }
+
+    public function isDepartmentHead()
+    {
+        return $this->role && $this->role->name === 'Department Head';
+    }
+
+    public function isAdmin()
+    {
+        return $this->role && $this->role->name === 'Admin';
+    }
 }

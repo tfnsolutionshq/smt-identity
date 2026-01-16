@@ -96,6 +96,54 @@ class DepartmentController extends Controller
         return $this->successResponse($department, 'Department deleted successfully');
     }
 
+    public function enrollUser(Request $request, $id)
+    {
+        $validator = app('validator')->make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', 422, $validator->errors());
+        }
+
+        $department = Department::find($id);
+        if (!$department) {
+            return $this->errorResponse('Department not found', 404);
+        }
+
+        // Check authorization
+        $authUser = Auth::user();
+        if (!$authUser->isAdmin()) {
+            return $this->errorResponse('Only admins can enroll users in departments', 403);
+        }
+
+        $user = User::find($request->user_id);
+        $user->update(['department_id' => $id]);
+
+        return $this->successResponse($user->load('department'), 'User enrolled in department successfully');
+    }
+
+    public function getRoles($id)
+    {
+        $department = Department::find($id);
+        if (!$department) {
+            return $this->errorResponse('Department not found', 404);
+        }
+
+        $roles = User::where('department_id', $id)
+            ->whereNotNull('role_id')
+            ->with('role')
+            ->get()
+            ->pluck('role')
+            ->filter(function($role) {
+                return !in_array($role->name, ['Admin', 'Super Admin']);
+            })
+            ->unique('id')
+            ->values();
+
+        return $this->successResponse($roles, 'Department roles fetched successfully');
+    }
+
     // Add this method to your DepartmentController
     public function statistics(Request $request)
     {

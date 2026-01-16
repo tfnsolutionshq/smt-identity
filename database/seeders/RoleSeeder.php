@@ -32,5 +32,12 @@ class RoleSeeder extends Seeder
             'institution_id' => $institution->id,
             'is_active' => true,
         ]);
+
+        Role::create([
+            'name' => 'Department Head',
+            'description' => 'Department Head with role assignment privileges',
+            'institution_id' => $institution->id,
+            'is_active' => true,
+        ]);
     }
 }

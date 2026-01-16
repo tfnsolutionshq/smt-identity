@@ -32,8 +32,8 @@ class AuthController extends Controller
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|confirmed|min:8',
-            'department_id' => 'required|exists:departments,id',
-            'role_id' => 'required|exists:roles,id',
+            'department_id' => 'nullable|exists:departments,id',
+            'role_id' => 'nullable|exists:roles,id',
             'phone' => 'nullable|string|max:20',
             'location' => 'nullable|string|max:255',
             'bio' => 'nullable|string',
@@ -115,7 +115,7 @@ class AuthController extends Controller
         ]);
 
         // Get role name and add it to user data
-        $role = $user->role->name;
+        $role = $user->role ? $user->role->name : null;
 
         // Prepare user data without the relationship
         $userData = $user->toArray();
@@ -138,7 +138,7 @@ class AuthController extends Controller
             'created_at' => $user->created_at,
             'updated_at' => $user->updated_at,
             'department' => $user->department,
-            'role' => strtolower($role), // Just the role name as string
+            'role' => $role ? strtolower($role) : null, // Just the role name as string
             "role_id" => $user->role_id,
         ];
 

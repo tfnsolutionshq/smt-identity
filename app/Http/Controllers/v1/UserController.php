@@ -55,6 +55,60 @@ class UserController extends Controller
         return $this->users->getUserStatistics();
     }
 
+    public function assignRole(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'role_id' => 'required|exists:roles,id',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', 422, $validator->errors());
+        }
+
+        $user = User::find($id);
+        if (!$user) {
+            return $this->errorResponse('User not found', 404);
+        }
+
+        // Check authorization
+        $authUser = Auth::user();
+        if ($authUser->isDepartmentHead() && $user->department_id !== $authUser->department_id) {
+            return $this->errorResponse('You can only assign roles to users in your department', 403);
+        }
+        
+        if (!$authUser->isAdmin() && !$authUser->isDepartmentHead()) {
+            return $this->errorResponse('Unauthorized to assign roles', 403);
+        }
+
+        $user->update(['role_id' => $request->role_id]);
+        return $this->successResponse($user->load('role'), 'Role assigned successfully');
+    }
+
+    public function enrollInDepartment(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'department_id' => 'required|exists:departments,id',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', 422, $validator->errors());
+        }
+
+        $user = User::find($id);
+        if (!$user) {
+            return $this->errorResponse('User not found', 404);
+        }
+
+        // Check authorization
+        $authUser = Auth::user();
+        if (!$authUser->isAdmin()) {
+            return $this->errorResponse('Only admins can enroll users in departments', 403);
+        }
+
+        $user->update(['department_id' => $request->department_id]);
+        return $this->successResponse($user->load('department'), 'User enrolled in department successfully');
+    }
+
     public function verifyRecipients(Request $request)
     {
         $validator = Validator::make($request->all(), [

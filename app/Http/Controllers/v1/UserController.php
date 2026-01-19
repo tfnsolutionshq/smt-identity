@@ -109,6 +109,25 @@ class UserController extends Controller
         return $this->successResponse($user->load('department'), 'User enrolled in department successfully');
     }
 
+    public function verifyByEmail(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', 422, $validator->errors());
+        }
+
+        $user = User::where('email', $request->email)->with(['department', 'role'])->first();
+        
+        if (!$user) {
+            return $this->errorResponse('User not found', 404);
+        }
+
+        return $this->successResponse(['user' => $user], 'User found successfully');
+    }
+
     public function verifyRecipients(Request $request)
     {
         $validator = Validator::make($request->all(), [

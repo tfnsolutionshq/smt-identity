@@ -37,6 +37,7 @@ Route::prefix('v1/')->group(function () {
     });
 
     Route::post('users/verify-recipients', [UserController::class, 'verifyRecipients']);
+    Route::post('users/verify-by-email', [UserController::class, 'verifyByEmail']);
 
 
     // Route::get('/users', [UserController::class, 'index']);

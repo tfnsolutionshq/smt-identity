@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use App\Traits\ApiResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use App\Imports\UsersImport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class UserController extends Controller
 {
@@ -71,6 +73,7 @@ class UserController extends Controller
         }
 
         // Check authorization
+        /** @var User $authUser */
         $authUser = Auth::user();
         if ($authUser->isDepartmentHead() && $user->department_id !== $authUser->department_id) {
             return $this->errorResponse('You can only assign roles to users in your department', 403);
@@ -100,6 +103,7 @@ class UserController extends Controller
         }
 
         // Check authorization
+        /** @var User $authUser */
         $authUser = Auth::user();
         if (!$authUser->isAdmin()) {
             return $this->errorResponse('Only admins can enroll users in departments', 403);
@@ -150,5 +154,64 @@ class UserController extends Controller
             'valid_recipients' => $users,
             'invalid_emails' => array_diff($request->emails, $users->pluck('email')->toArray()),
         ]);
+    }
+
+    public function bulkUpload(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', 422, $validator->errors());
+        }
+
+        /** @var User $authUser */
+        $authUser = Auth::user();
+        if (!$authUser->isAdmin()) {
+            return $this->errorResponse('Only admins can upload users', 403);
+        }
+
+        try {
+            Excel::import(new UsersImport, $request->file('file'));
+            return $this->successResponse(null, 'Users uploaded successfully');
+        } catch (\Exception $e) {
+            return $this->errorResponse('Upload failed: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function assignUsersToDepartment(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_ids' => 'required|array',
+            'user_ids.*' => 'required|exists:users,id',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', 422, $validator->errors());
+        }
+
+        /** @var User $authUser */
+        $authUser = Auth::user();
+        if (!$authUser->isDepartmentHead() && !$authUser->isAdmin()) {
+            return $this->errorResponse('Only department heads and admins can assign users to departments', 403);
+        }
+
+        $users = User::whereIn('id', $request->user_ids)
+            ->sameInstitution()
+            ->get();
+
+        if ($users->count() !== count($request->user_ids)) {
+            return $this->errorResponse('Some users not found or not in your institution', 404);
+        }
+
+        $users->each(function ($user) use ($authUser) {
+            $user->update(['department_id' => $authUser->department_id]);
+        });
+
+        return $this->successResponse(
+            $users->load('department'), 
+            'Users assigned to department successfully'
+        );
     }
 }

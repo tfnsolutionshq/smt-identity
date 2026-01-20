@@ -117,11 +117,23 @@ class User extends Authenticatable
 
     public function isDepartmentHead()
     {
+        if (!$this->role_id) return false;
+        
+        if (!$this->relationLoaded('role')) {
+            $this->load('role');
+        }
+        
         return $this->role && $this->role->name === 'Department Head';
     }
 
     public function isAdmin()
     {
+        if (!$this->role_id) return false;
+        
+        if (!$this->relationLoaded('role')) {
+            $this->load('role');
+        }
+        
         return $this->role && $this->role->name === 'Admin';
     }
 }

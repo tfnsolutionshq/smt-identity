@@ -82,4 +82,55 @@ class RoleController extends Controller
         $role->delete();
         return $this->successResponse($role, 'Role deleted successfully');
     }
+
+    public function createDepartmentRole(Request $request)
+    {
+        $validator = app('validator')->make($request->all(), [
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', 422, $validator->errors());
+        }
+
+        /** @var \App\Models\User $authUser */
+        $authUser = Auth::user();
+        
+        if (!$authUser->isDepartmentHead()) {
+            return $this->errorResponse('Only department heads can create department roles', 403);
+        }
+
+        if (!$authUser->institution) {
+            return $this->errorResponse('User does not belong to any institution', 403);
+        }
+
+        $validatedData = $validator->validated();
+        $validatedData['institution_id'] = $authUser->institution->id;
+        $validatedData['name'] = $authUser->department->name . ' - ' . $validatedData['name'];
+
+        try {
+            $role = Role::create($validatedData);
+            return $this->successResponse($role, 'Department role created successfully', 201);
+        } catch (\Exception $e) {
+            return $this->errorResponse('Failed to create department role: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function getDepartmentRoles()
+    {
+        /** @var \App\Models\User $authUser */
+        $authUser = Auth::user();
+        
+        if (!$authUser->isDepartmentHead()) {
+            return $this->errorResponse('Only department heads can access this endpoint', 403);
+        }
+
+        $roles = Role::where('institution_id', $authUser->institution_id)
+            ->where('name', 'like', $authUser->department->name . ' - %')
+            ->with('permissions')
+            ->get();
+
+        return $this->successResponse($roles, 'Department roles fetched successfully');
+    }
 }

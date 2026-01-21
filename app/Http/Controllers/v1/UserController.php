@@ -78,7 +78,7 @@ class UserController extends Controller
         if ($authUser->isDepartmentHead() && $user->department_id !== $authUser->department_id) {
             return $this->errorResponse('You can only assign roles to users in your department', 403);
         }
-        
+
         if (!$authUser->isAdmin() && !$authUser->isDepartmentHead()) {
             return $this->errorResponse('Unauthorized to assign roles', 403);
         }
@@ -124,7 +124,7 @@ class UserController extends Controller
         }
 
         $user = User::where('email', $request->email)->with(['department', 'role'])->first();
-        
+
         if (!$user) {
             return $this->errorResponse('User not found', 404);
         }
@@ -210,8 +210,44 @@ class UserController extends Controller
         });
 
         return $this->successResponse(
-            $users->load('department'), 
+            $users->load('department'),
             'Users assigned to department successfully'
         );
+    }
+
+    public function getDepartmentUsers()
+    {
+        /** @var User $authUser */
+        $authUser = Auth::user();
+
+        // if (!$authUser->isDepartmentHead()) {
+        //     return $this->errorResponse('Only department heads can access this endpoint', 403);
+        // }
+
+        $users = User::with(['department', 'role'])
+            ->where('department_id', $authUser->department_id)
+            ->get();
+
+        return $this->successResponse(['users' => $users], 'Department users retrieved successfully');
+    }
+
+    public function search(Request $request)
+    {
+        $search = $request->get('q');
+        
+        if (!$search) {
+            return $this->errorResponse('Search query is required', 400);
+        }
+
+        $users = User::with(['department', 'role'])
+            ->sameInstitution()
+            ->where(function($query) use ($search) {
+                $query->where('first_name', 'like', "%{$search}%")
+                      ->orWhere('last_name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+            })
+            ->get();
+
+        return $this->successResponse(['users' => $users], 'Users found successfully');
     }
 }

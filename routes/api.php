@@ -92,6 +92,7 @@ Route::prefix('v1/')->group(function () {
         // group users and prefix by users
         Route::prefix('users')->group(function () {
             Route::get('/', [UserController::class, 'index']);
+            Route::get('/search', [UserController::class, 'search']);
             Route::post('/bulk-upload', [UserController::class, 'bulkUpload']);
             Route::post('/assign-to-department', [UserController::class, 'assignUsersToDepartment']);
             Route::get('/institute', [UserController::class, 'byInstitute'])->middleware('auth:sanctum');

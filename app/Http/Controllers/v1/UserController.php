@@ -215,7 +215,7 @@ class UserController extends Controller
         );
     }
 
-    public function getDepartmentUsers()
+    public function getDepartmentUsers(Request $request)
     {
         /** @var User $authUser */
         $authUser = Auth::user();
@@ -224,21 +224,23 @@ class UserController extends Controller
         //     return $this->errorResponse('Only department heads can access this endpoint', 403);
         // }
 
+        $perPage = $request->get('per_page', 20);
         $users = User::with(['department', 'role'])
             ->where('department_id', $authUser->department_id)
-            ->get();
+            ->paginate($perPage);
 
-        return $this->successResponse(['users' => $users], 'Department users retrieved successfully');
+        return $this->successResponse($users, 'Department users retrieved successfully');
     }
 
     public function search(Request $request)
     {
         $search = $request->get('q');
-        
+
         if (!$search) {
             return $this->errorResponse('Search query is required', 400);
         }
 
+        $perPage = $request->get('per_page', 20);
         $users = User::with(['department', 'role'])
             ->sameInstitution()
             ->where(function($query) use ($search) {
@@ -246,8 +248,8 @@ class UserController extends Controller
                       ->orWhere('last_name', 'like', "%{$search}%")
                       ->orWhere('email', 'like', "%{$search}%");
             })
-            ->get();
+            ->paginate($perPage);
 
-        return $this->successResponse(['users' => $users], 'Users found successfully');
+        return $this->successResponse($users, 'Users found successfully');
     }
 }

@@ -93,6 +93,7 @@ Route::prefix('v1/')->group(function () {
         Route::prefix('users')->group(function () {
             Route::get('/', [UserController::class, 'index']);
             Route::get('/search', [UserController::class, 'search']);
+            Route::get('/my-department', [UserController::class, 'getDepartmentUsers']);
             Route::post('/bulk-upload', [UserController::class, 'bulkUpload']);
             Route::post('/assign-to-department', [UserController::class, 'assignUsersToDepartment']);
             Route::get('/institute', [UserController::class, 'byInstitute'])->middleware('auth:sanctum');
@@ -126,8 +127,10 @@ Route::prefix('v1/')->group(function () {
 
         Route::prefix('roles')->group(function () {
             Route::get('/', [RoleController::class, 'index']);
-            Route::get('/{role}', [RoleController::class, 'show']);
             Route::post('/', [RoleController::class, 'store']);
+            Route::post('/department', [RoleController::class, 'createDepartmentRole']);
+            Route::get('/my-department', [RoleController::class, 'getDepartmentRoles']);
+            Route::get('/{role}', [RoleController::class, 'show']);
             Route::put('/{role}', [RoleController::class, 'update']); // Changed {id} to {role}
             Route::delete('/{role}', [RoleController::class, 'destroy']); // Changed {id} to {role}
 

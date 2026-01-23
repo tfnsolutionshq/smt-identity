@@ -21,12 +21,13 @@ class UserService
 
     public function getAll($request)
     {
+        $perPage = $request->get('per_page', 20);
         $query = User::with(['department', 'role'])
             ->sameInstitution()
             ->excludeCurrentUser()
             ->active();
 
-        $users = $query->paginate(10);
+        $users = $query->paginate($perPage);
         
         $users->getCollection()->transform(function ($user) {
             $user->approval_stats = $this->memoService->getUserApprovalStats($user->id);

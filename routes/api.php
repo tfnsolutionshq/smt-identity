@@ -21,6 +21,9 @@ Route::prefix('v1/')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
     Route::post('reset-password-request', [AuthController::class, 'resetPasswordRequest']);
     Route::post('reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
+    Route::post('reset-password-otp', [AuthController::class, 'resetPasswordWithOtp']);
 
     // S2S Authentication Routes
     Route::middleware('s2s')->prefix('s2s')->group(function () {

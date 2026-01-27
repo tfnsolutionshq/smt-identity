@@ -4,6 +4,7 @@ namespace App\Http\Controllers\v1;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\PasswordResetOtp;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -227,5 +228,91 @@ class AuthController extends Controller
             'status' => true,
             'message' => 'Logged out successfully'
         ]);
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse($validator->errors()->first(), 422);
+        }
+
+        $user = User::where('email', $request->email)->first();
+        $otp = PasswordResetOtp::generateOtp();
+
+        PasswordResetOtp::where('email', $request->email)->delete();
+        PasswordResetOtp::create([
+            'email' => $request->email,
+            'otp' => $otp,
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $this->sendNotification('forgot_password_otp', $user->email, [
+            'user_name' => $user->first_name . ' ' . $user->last_name,
+            'otp' => $otp,
+        ]);
+
+        return $this->successResponse([
+            'email' => $user->email,
+        ], 'OTP sent to your email');
+    }
+
+    public function verifyOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'otp' => 'required|string|size:6',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse($validator->errors()->first(), 422);
+        }
+
+        $otpRecord = PasswordResetOtp::where('email', $request->email)
+            ->where('otp', $request->otp)
+            ->first();
+
+        if (!$otpRecord || $otpRecord->isExpired()) {
+            return $this->errorResponse('Invalid or expired OTP', 400);
+        }
+
+        return $this->successResponse([
+            'email' => $request->email,
+            'otp_verified' => true,
+        ], 'OTP verified successfully');
+    }
+
+    public function resetPasswordWithOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'otp' => 'required|string|size:6',
+            'password' => 'required|confirmed|min:8',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse($validator->errors()->first(), 422);
+        }
+
+        $otpRecord = PasswordResetOtp::where('email', $request->email)
+            ->where('otp', $request->otp)
+            ->first();
+
+        if (!$otpRecord || $otpRecord->isExpired()) {
+            return $this->errorResponse('Invalid or expired OTP', 400);
+        }
+
+        $user = User::where('email', $request->email)->first();
+        $user->update(['password' => Hash::make($request->password)]);
+        $user->tokens()->delete();
+
+        $otpRecord->delete();
+
+        return $this->successResponse([
+            'email' => $user->email,
+        ], 'Password reset successfully');
     }
 }

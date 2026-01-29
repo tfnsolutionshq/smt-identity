@@ -118,12 +118,7 @@ class AuthController extends Controller
         // Get role name and add it to user data
         $role = $user->role ? $user->role->name : null;
 
-        // Prepare user data without the relationship
-        $userData = $user->toArray();
-        $userData['role'] = $role; // Add role as string
-        unset($userData['role']); // Remove the role relationship if it exists
-
-        // If you want to be more explicit, you can manually select the fields:
+        // Prepare user data
         $userData = [
             'id' => $user->id,
             'first_name' => $user->first_name,
@@ -139,8 +134,8 @@ class AuthController extends Controller
             'created_at' => $user->created_at,
             'updated_at' => $user->updated_at,
             'department' => $user->department,
-            'role' => $role ? strtolower($role) : null, // Just the role name as string
-            "role_id" => $user->role_id,
+            'role' => $role ? strtolower($role) : null,
+            'role_id' => $user->role_id,
         ];
 
         return $this->successResponse([
@@ -314,5 +309,40 @@ class AuthController extends Controller
         return $this->successResponse([
             'email' => $user->email,
         ], 'Password reset successfully');
+    }
+
+    public function getCurrentUser(Request $request)
+    {
+        $user = $request->user()->load(['department', 'role']);
+        $token = $request->bearerToken();
+        
+        // Get memo stats
+        $memoService = app(\App\Services\MemoService::class);
+        $memoStats = $memoService->getUserMemoStats($user->id, $token);
+        
+        $role = $user->role ? $user->role->name : null;
+        
+        $userData = [
+            'id' => $user->id,
+            'first_name' => $user->first_name,
+            'middle_name' => $user->middle_name,
+            'last_name' => $user->last_name,
+            'email' => $user->email,
+            'last_login_at' => $user->last_login_at,
+            'department_id' => $user->department_id,
+            'institution_id' => $user->institution_id,
+            'is_active' => $user->is_active,
+            'avatar' => $user->avatar,
+            'email_verified_at' => $user->email_verified_at,
+            'created_at' => $user->created_at,
+            'updated_at' => $user->updated_at,
+            'department' => $user->department,
+            'role' => $role ? strtolower($role) : null,
+            'role_id' => $user->role_id,
+            'sent_memos_count' => $memoStats['sent_memos_count'],
+            'pending_action_count' => $memoStats['pending_action_count'],
+        ];
+        
+        return $this->successResponse($userData, 'User data retrieved successfully');
     }
 }

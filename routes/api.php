@@ -39,6 +39,8 @@ Route::prefix('v1/')->group(function () {
         return response()->json($user);
     });
 
+    Route::middleware('auth:sanctum')->get('current-user', [AuthController::class, 'getCurrentUser']);
+
     Route::post('users/verify-recipients', [UserController::class, 'verifyRecipients']);
     Route::post('users/verify-by-email', [UserController::class, 'verifyByEmail']);
 

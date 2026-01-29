@@ -35,7 +35,11 @@ class ProfileController extends Controller
         $user->update($data);
         $user->load(['department', 'role']);
 
-        return $this->successResponse($user, 'Profile updated successfully');
+        // Ensure avatar returns full URL
+        $userData = $user->toArray();
+        $userData['avatar'] = $user->avatar_url;
+
+        return $this->successResponse($userData, 'Profile updated successfully');
     }
 
     public function changePassword(ChangePasswordRequest $request)

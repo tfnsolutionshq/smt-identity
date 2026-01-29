@@ -118,22 +118,41 @@ class User extends Authenticatable
     public function isDepartmentHead()
     {
         if (!$this->role_id) return false;
-        
+
         if (!$this->relationLoaded('role')) {
             $this->load('role');
         }
-        
+
         return $this->role && $this->role->name === 'Department Head';
     }
 
     public function isAdmin()
     {
         if (!$this->role_id) return false;
-        
+
         if (!$this->relationLoaded('role')) {
             $this->load('role');
         }
-        
+
         return $this->role && $this->role->name === 'Admin';
+    }
+
+    public function getAvatarUrlAttribute()
+    {
+        if (!$this->avatar) {
+            return null;
+        }
+
+        // If it's already a full URL, return as-is
+        if (filter_var($this->avatar, FILTER_VALIDATE_URL)) {
+            return $this->avatar;
+        }
+
+        // Check if file exists in storage/app/public/
+        // if (!Storage::disk('public')->exists($this->avatar)) {
+        //     return null;
+        // }
+
+        return asset('storage/' . $this->avatar);
     }
 }

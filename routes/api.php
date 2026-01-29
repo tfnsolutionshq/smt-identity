@@ -36,7 +36,9 @@ Route::prefix('v1/')->group(function () {
 
     Route::middleware('auth:sanctum')->get('users/me', function (Request $request) {
         $user = $request->user()->load(['department', 'role']);
-        return response()->json($user);
+        $userData = $user->toArray();
+        $userData['avatar'] = $user->avatar_url;
+        return response()->json($userData);
     });
 
     Route::middleware('auth:sanctum')->get('current-user', [AuthController::class, 'getCurrentUser']);

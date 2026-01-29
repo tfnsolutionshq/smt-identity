@@ -84,7 +84,9 @@ class UserController extends Controller
         }
 
         $user->update(['role_id' => $request->role_id]);
-        return $this->successResponse($user->load('role'), 'Role assigned successfully');
+        $user->load('role');
+        $user->avatar = $user->avatar_url;
+        return $this->successResponse($user, 'Role assigned successfully');
     }
 
     public function enrollInDepartment(Request $request, $id)
@@ -110,7 +112,9 @@ class UserController extends Controller
         }
 
         $user->update(['department_id' => $request->department_id]);
-        return $this->successResponse($user->load('department'), 'User enrolled in department successfully');
+        $user->load('department');
+        $user->avatar = $user->avatar_url;
+        return $this->successResponse($user, 'User enrolled in department successfully');
     }
 
     public function verifyByEmail(Request $request)
@@ -129,6 +133,7 @@ class UserController extends Controller
             return $this->errorResponse('User not found', 404);
         }
 
+        $user->avatar = $user->avatar_url;
         return $this->successResponse(['user' => $user], 'User found successfully');
     }
 
@@ -229,6 +234,11 @@ class UserController extends Controller
             ->where('department_id', $authUser->department_id)
             ->paginate($perPage);
 
+        $users->getCollection()->transform(function ($user) {
+            $user->avatar = $user->avatar_url;
+            return $user;
+        });
+
         return $this->successResponse($users, 'Department users retrieved successfully');
     }
 
@@ -249,6 +259,11 @@ class UserController extends Controller
                       ->orWhere('email', 'like', "%{$search}%");
             })
             ->paginate($perPage);
+
+        $users->getCollection()->transform(function ($user) {
+            $user->avatar = $user->avatar_url;
+            return $user;
+        });
 
         return $this->successResponse($users, 'Users found successfully');
     }

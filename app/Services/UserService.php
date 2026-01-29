@@ -31,6 +31,7 @@ class UserService
         
         $users->getCollection()->transform(function ($user) {
             $user->approval_stats = $this->memoService->getUserApprovalStats($user->id);
+            $user->avatar = $user->avatar_url;
             return $user;
         });
 
@@ -47,6 +48,7 @@ class UserService
             
         $users->transform(function ($user) {
             $user->approval_stats = $this->memoService->getUserApprovalStats($user->id);
+            $user->avatar = $user->avatar_url;
             return $user;
         });
 
@@ -63,6 +65,7 @@ class UserService
             
         $users->transform(function ($user) {
             $user->approval_stats = $this->memoService->getUserApprovalStats($user->id);
+            $user->avatar = $user->avatar_url;
             return $user;
         });
 
@@ -77,6 +80,7 @@ class UserService
             
         if ($user) {
             $user->approval_stats = $this->memoService->getUserApprovalStats($user->id);
+            $user->avatar = $user->avatar_url;
         }
         
         return $this->successResponse($user, 'User fetched successfully');
@@ -90,6 +94,7 @@ class UserService
             
         $users->transform(function ($user) {
             $user->approval_stats = $this->memoService->getUserApprovalStats($user->id);
+            $user->avatar = $user->avatar_url;
             return $user;
         });
         
@@ -152,6 +157,7 @@ class UserService
         $user->role = strtolower($user->role->name);
         unset($user->role_id);
         $user->approval_stats = $this->memoService->getUserApprovalStats($user->id);
+        $user->avatar = $user->avatar_url;
 
         return $this->successResponse($user, 'User updated successfully');
     }

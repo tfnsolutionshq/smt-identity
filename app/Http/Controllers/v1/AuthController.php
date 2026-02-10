@@ -63,6 +63,12 @@ class AuthController extends Controller
             'is_active' => true
         ]);
 
+        $this->sendNotification('user_created', $user->email, [
+            'user_name' => $user->first_name . ' ' . $user->last_name,
+            'email' => $user->email,
+            'password' => $request->password,
+        ]);
+
         $token = $user->createToken('auth')->plainTextToken;
         $user->load(['department', 'role']);
 

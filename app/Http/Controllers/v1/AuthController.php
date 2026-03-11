@@ -53,6 +53,7 @@ class AuthController extends Controller
             'email' => $request->email,
             'phone' => $request->phone,
             'password' => $request->password,
+            'must_change_password' => true,
             'department_id' => $request->department_id,
             'role_id' => $request->role_id,
             'institution_id' => Auth::user()->institution_id,
@@ -100,6 +101,15 @@ class AuthController extends Controller
             $this->logFailedLogin($request->email, 'invalid_credentials');
 
             return $this->errorResponse('The email address or password you entered is incorrect. Pleas check and try again.', 401);
+        }
+
+        if ($user->must_change_password) {
+            return response()->json([
+                'status' => false,
+                'message' => 'You must change your password before logging in',
+                'must_change_password' => true,
+                'user_id' => $user->id
+            ], 403);
         }
 
         if ($user->default_password ?? false) {
@@ -315,6 +325,32 @@ class AuthController extends Controller
         return $this->successResponse([
             'email' => $user->email,
         ], 'Password reset successfully');
+    }
+
+    public function forceChangePassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'old_password' => 'required',
+            'password' => 'required|confirmed|min:8',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse($validator->errors()->first(), 422);
+        }
+
+        $user = User::find($request->user_id);
+
+        if (!Hash::check($request->old_password, $user->password)) {
+            return $this->errorResponse('Old password is incorrect', 401);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->password),
+            'must_change_password' => false
+        ]);
+
+        return $this->successResponse(null, 'Password changed successfully. You can now login.');
     }
 
     public function getCurrentUser(Request $request)

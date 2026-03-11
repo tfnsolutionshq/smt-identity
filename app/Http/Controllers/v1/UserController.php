@@ -267,4 +267,50 @@ class UserController extends Controller
 
         return $this->successResponse($users, 'Users found successfully');
     }
+
+    public function destroy($id)
+    {
+        $user = User::sameInstitution()->find($id);
+        
+        if (!$user) {
+            return $this->errorResponse('User not found', 404);
+        }
+
+        /** @var User $authUser */
+        $authUser = Auth::user();
+        if (!$authUser->isAdmin()) {
+            return $this->errorResponse('Only admins can delete users', 403);
+        }
+
+        $user->delete();
+        return $this->successResponse(null, 'User deleted successfully');
+    }
+
+    public function resetPassword(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'password' => 'required|min:8',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Validation failed', 422, $validator->errors());
+        }
+
+        /** @var User $authUser */
+        $authUser = Auth::user();
+        if (!$authUser->isAdmin()) {
+            return $this->errorResponse('Only admins can reset user passwords', 403);
+        }
+
+        $user = User::sameInstitution()->find($id);
+        if (!$user) {
+            return $this->errorResponse('User not found', 404);
+        }
+
+        $user->update([
+            'password' => $request->password,
+            'must_change_password' => true
+        ]);
+        return $this->successResponse(null, 'Password reset successfully');
+    }
 }

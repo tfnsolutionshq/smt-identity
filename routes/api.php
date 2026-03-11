@@ -24,6 +24,7 @@ Route::prefix('v1/')->group(function () {
     Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
     Route::post('reset-password-otp', [AuthController::class, 'resetPasswordWithOtp']);
+    Route::post('force-change-password', [AuthController::class, 'forceChangePassword']);
 
     // S2S Authentication Routes
     Route::middleware('s2s')->prefix('s2s')->group(function () {
@@ -110,6 +111,8 @@ Route::prefix('v1/')->group(function () {
             Route::put('/{id}', [UserController::class, 'update']);
             Route::put('/{id}/assign-role', [UserController::class, 'assignRole'])->middleware('department.head');
             Route::put('/{id}/enroll-department', [UserController::class, 'enrollInDepartment']);
+            Route::put('/{id}/reset-password', [UserController::class, 'resetPassword']);
+            Route::delete('/{id}', [UserController::class, 'destroy']);
             Route::get('/{id}', [UserController::class, 'show']);
         });
 

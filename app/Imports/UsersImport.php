@@ -34,6 +34,7 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation
             'last_name' => $lastName,
             'email' => $row['email'],
             'password' => Hash::make($defaultPassword),
+            'must_change_password' => true,
             'institution_id' => $authUser->institution_id,
             'is_active' => true,
         ]);

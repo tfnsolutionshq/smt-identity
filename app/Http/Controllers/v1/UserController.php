@@ -11,11 +11,18 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use App\Imports\UsersImport;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Password;
+use App\Traits\NotifyTrait;
 
 class UserController extends Controller
 {
-    use ApiResponse;
+    use ApiResponse, NotifyTrait;
     protected $users;
+
+    protected function getServiceName(): string
+    {
+        return 'identity';
+    }
 
     public function __construct(UserService $users)
     {
@@ -288,14 +295,6 @@ class UserController extends Controller
 
     public function resetPassword(Request $request, $id)
     {
-        $validator = Validator::make($request->all(), [
-            'password' => 'required|min:8',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->errorResponse('Validation failed', 422, $validator->errors());
-        }
-
         /** @var User $authUser */
         $authUser = Auth::user();
         if (!$authUser->isAdmin()) {
@@ -307,10 +306,17 @@ class UserController extends Controller
             return $this->errorResponse('User not found', 404);
         }
 
-        $user->update([
-            'password' => $request->password,
-            'must_change_password' => true
+        $token = Password::createToken($user);
+
+        $this->sendNotification('admin_password_reset', $user->email, [
+            'user_name' => $user->first_name . ' ' . $user->last_name,
+            'admin_name' => $authUser->first_name . ' ' . $authUser->last_name,
+            'reset_token' => $token,
+            'reset_url' => 'https://smt.tfnsolutions.us/forgot-password?token=' . $token . '&email=' . urlencode($user->email)
         ]);
-        return $this->successResponse(null, 'Password reset successfully');
+
+        return $this->successResponse([
+            'email' => $user->email
+        ], 'Password reset link sent to user successfully');
     }
 }

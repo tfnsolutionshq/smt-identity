@@ -103,20 +103,20 @@ class AuthController extends Controller
             return $this->errorResponse('The email address or password you entered is incorrect. Pleas check and try again.', 401);
         }
 
-        if ($user->must_change_password) {
-            return response()->json([
-                'status' => false,
-                'message' => 'You must change your password before logging in',
-                'must_change_password' => true,
-                'user_id' => $user->id
-            ], 403);
-        }
+        // if ($user->must_change_password) {
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => 'You must change your password before logging in',
+        //         'must_change_password' => true,
+        //         'user_id' => $user->id
+        //     ], 403);
+        // }
 
-        if ($user->default_password ?? false) {
-            $this->logFailedLogin($request->email, 'default_password_not_changed');
+        // if ($user->default_password ?? false) {
+        //     $this->logFailedLogin($request->email, 'default_password_not_changed');
 
-            return $this->errorResponse('Invalid credentials', 419);
-        }
+        //     return $this->errorResponse('Invalid credentials', 419);
+        // }
 
         $user->update(['last_login_at' => now()]);
 
@@ -141,6 +141,7 @@ class AuthController extends Controller
             'middle_name' => $user->middle_name,
             'last_name' => $user->last_name,
             'email' => $user->email,
+            'must_change_password' => $user->must_change_password,
             'last_login_at' => $user->last_login_at,
             'department_id' => $user->department_id,
             'institution_id' => $user->institution_id,
@@ -357,13 +358,13 @@ class AuthController extends Controller
     {
         $user = $request->user()->load(['department', 'role']);
         $token = $request->bearerToken();
-        
+
         // Get memo stats
         $memoService = app(\App\Services\MemoService::class);
         $memoStats = $memoService->getUserMemoStats($user->id, $token);
-        
+
         $role = $user->role ? $user->role->name : null;
-        
+
         $userData = [
             'id' => $user->id,
             'first_name' => $user->first_name,
@@ -384,7 +385,7 @@ class AuthController extends Controller
             'sent_memos_count' => $memoStats['sent_memos_count'],
             'pending_action_count' => $memoStats['pending_action_count'],
         ];
-        
+
         return $this->successResponse($userData, 'User data retrieved successfully');
     }
 }

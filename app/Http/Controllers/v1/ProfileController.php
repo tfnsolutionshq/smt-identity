@@ -50,7 +50,10 @@ class ProfileController extends Controller
             return $this->errorResponse('Current password is incorrect', 422);
         }
 
-        $user->update(['password' => $request->new_password]);
+        $user->update([
+            'password' => $request->new_password,
+            'must_change_password' => false
+        ]);
 
         return $this->successResponse(null, 'Password changed successfully');
     }

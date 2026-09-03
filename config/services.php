@@ -46,5 +46,8 @@ return [
     ],
     'api_key' => env('SERVICE_API_KEY', 'default-secret-key-123'),
 
+    'integration' => [
+        'active' => env('ACTIVE_INTEGRATION'),
+    ],
 
 ];

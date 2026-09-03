@@ -126,9 +126,13 @@ class UserService
     {
         $validator = Validator::make($request->all(), [
             'first_name' => 'sometimes|string|max:255',
+            'middle_name' => 'sometimes|nullable|string|max:255',
             'last_name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|unique:users,email,' . $id,
             'phone' => 'sometimes|nullable|string|max:20',
+            'phone_number' => 'sometimes|nullable|string|max:20',
+            'avatar' => 'sometimes|nullable',
+            'avatar_url' => 'sometimes|nullable|string',
             'location' => 'sometimes|nullable|string|max:255',
             'bio' => 'sometimes|nullable|string',
             'timezone' => 'sometimes|nullable|string|max:50',
@@ -147,11 +151,23 @@ class UserService
             return $this->errorResponse('User not found', 404);
         }
 
-        $user->update($request->only([
+        $data = $request->only([
             'first_name', 'middle_name', 'last_name', 'email', 'phone',
             'location', 'bio', 'timezone', 'language',
             'department_id', 'role_id', 'is_active'
-        ]));
+        ]);
+
+        if ($request->has('phone_number') && !$request->has('phone')) {
+            $data['phone'] = $request->phone_number;
+        }
+
+        if ($request->filled('avatar')) {
+            $data['avatar'] = $request->avatar;
+        } elseif ($request->filled('avatar_url')) {
+            $data['avatar'] = $request->avatar_url;
+        }
+
+        $user->update($data);
 
         $user->load(['department', 'role']);
         $user->role = strtolower($user->role->name);

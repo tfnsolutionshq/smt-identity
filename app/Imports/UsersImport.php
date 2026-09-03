@@ -29,10 +29,15 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation
         $firstName = $nameParts[0] ?? '';
         $lastName = $nameParts[1] ?? '';
         
+        $phone = $row['phone_number'] ?? $row['phone'] ?? null;
+        $avatar = $row['avatar'] ?? $row['avatar_url'] ?? null;
+
         $user = new User([
             'first_name' => $firstName,
             'last_name' => $lastName,
             'email' => $row['email'],
+            'phone' => $phone,
+            'avatar' => $avatar,
             'password' => Hash::make($defaultPassword),
             'must_change_password' => true,
             'institution_id' => $authUser->institution_id,
@@ -55,6 +60,10 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation
         return [
             'email' => 'required|email|unique:users,email',
             'firstname' => 'required|string|max:255',
+            'phone' => 'nullable|string|max:20',
+            'phone_number' => 'nullable|string|max:20',
+            'avatar' => 'nullable|string',
+            'avatar_url' => 'nullable|string',
         ];
     }
 }

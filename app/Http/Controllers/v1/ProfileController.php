@@ -18,6 +18,10 @@ class ProfileController extends Controller
         $user = $request->user();
         $data = $request->only(['first_name', 'middle_name', 'last_name', 'phone', 'location', 'bio', 'timezone', 'language']);
 
+        if ($request->has('phone_number') && !$request->has('phone')) {
+            $data['phone'] = $request->phone_number;
+        }
+
         if ($request->hasFile('signature')) {
             if ($user->signature) {
                 Storage::disk('public')->delete($user->signature);
@@ -26,18 +30,25 @@ class ProfileController extends Controller
         }
 
         if ($request->hasFile('avatar')) {
-            if ($user->avatar) {
+            if ($user->avatar && !filter_var($user->avatar, FILTER_VALIDATE_URL)) {
                 Storage::disk('public')->delete($user->avatar);
             }
             $data['avatar'] = $request->file('avatar')->store('avatars', 'public');
+        } elseif ($request->filled('avatar')) {
+            $data['avatar'] = $request->avatar;
+        } elseif ($request->filled('avatar_url')) {
+            $data['avatar'] = $request->avatar_url;
         }
 
         $user->update($data);
         $user->load(['department', 'role']);
 
-        // Ensure avatar returns full URL
+        // Ensure avatar and phone return full URLs/aliases
         $userData = $user->toArray();
         $userData['avatar'] = $user->avatar_url;
+        $userData['avatar_url'] = $user->avatar_url;
+        $userData['phone'] = $user->phone;
+        $userData['phone_number'] = $user->phone;
 
         return $this->successResponse($userData, 'Profile updated successfully');
     }

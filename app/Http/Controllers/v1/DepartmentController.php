@@ -12,15 +12,9 @@ use Illuminate\Support\Facades\Auth;
 class DepartmentController extends Controller
 {
     use ApiResponse;
-    public function index(Request $request)
+    public function index(Request $request, \App\Integrations\Contracts\DepartmentIntegrationInterface $integration)
     {
-        $perPage = $request->get('per_page', 20);
-        $query = Department::query();
-        if ($search = $request->get('search')) {
-            $query->where('name', 'like', "%{$search}%");
-        }
-
-        $departments = $query->with(['institution'])->paginate($perPage);
+        $departments = $integration->getDepartments($request);
 
         return $this->successResponse($departments, 'departments fetched successfully');
     }

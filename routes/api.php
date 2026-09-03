@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\v1\IntegrationController;
 use App\Http\Controllers\v1\RolePermissionController;
 use App\Http\Controllers\v1\AuthController;
 use App\Http\Controllers\v1\DepartmentController;
@@ -17,6 +18,11 @@ use Illuminate\Support\Facades\Route;
 
 
 Route::prefix('v1/')->group(function () {
+
+    // Integration Status & Capabilities (Publicly accessible for frontend form/step detection)
+    Route::get('integration/status', [IntegrationController::class, 'status']);
+    Route::get('integrations/status', [IntegrationController::class, 'status']);
+    Route::get('integration/lookup/{identifier}', [IntegrationController::class, 'lookupUser']);
 
     Route::post('login', [AuthController::class, 'login']);
     Route::post('reset-password-request', [AuthController::class, 'resetPasswordRequest']);
@@ -87,6 +93,7 @@ Route::prefix('v1/')->group(function () {
         Route::post('profile', [ProfileController::class, 'update']);
         Route::post('change-password', [ProfileController::class, 'changePassword']);
         Route::post('register', [AuthController::class, 'register']);
+        Route::get('users/integration/lookup/{identifier}', [AuthController::class, 'lookupUserForRegistration']);
         Route::prefix('analytics/')->group(function () { // Admin analytics
             Route::get('roles-with-permissions-and-users', [AdminAnalyticsController::class, 'rolesWithPermissionsAndUsers']);
             Route::get('permission-statistics', [AdminAnalyticsController::class, 'permissionsWithRoleCounts']);

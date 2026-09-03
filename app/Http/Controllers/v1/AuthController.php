@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use App\Traits\LogsActivity;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use App\Traits\NotifyTrait;
 
 class AuthController extends Controller
@@ -28,14 +29,25 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
+        $avatarRules = ['nullable'];
+        if ($request->hasFile('avatar')) {
+            $avatarRules = ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'];
+        } else {
+            $avatarRules = ['nullable', 'string'];
+        }
+
         $validator = Validator::make($request->all(), [
             'first_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|confirmed|min:8',
             'department_id' => 'nullable|exists:departments,id',
             'role_id' => 'nullable|exists:roles,id',
             'phone' => 'nullable|string|max:20',
+            'phone_number' => 'nullable|string|max:20',
+            'avatar' => $avatarRules,
+            'avatar_url' => 'nullable|string',
             'location' => 'nullable|string|max:255',
             'bio' => 'nullable|string',
             'timezone' => 'nullable|string|max:50',
@@ -46,17 +58,31 @@ class AuthController extends Controller
             return $this->errorResponse($validator->errors()->first(), 422);
         }
 
+        $phone = $request->phone_number ?? $request->phone;
+
+        $avatar = null;
+        if ($request->hasFile('avatar')) {
+            $avatar = $request->file('avatar')->store('avatars', 'public');
+        } elseif ($request->filled('avatar')) {
+            $avatar = $request->avatar;
+        } elseif ($request->filled('avatar_url')) {
+            $avatar = $request->avatar_url;
+        }
+
+        $institutionId = Auth::check() ? Auth::user()->institution_id : ($request->institution_id ?? null);
+
         $user = User::create([
             'first_name' => $request->first_name,
             'middle_name' => $request->middle_name,
             'last_name' => $request->last_name,
             'email' => $request->email,
-            'phone' => $request->phone,
+            'phone' => $phone,
+            'avatar' => $avatar,
             'password' => $request->password,
             'must_change_password' => true,
             'department_id' => $request->department_id,
             'role_id' => $request->role_id,
-            'institution_id' => Auth::user()->institution_id,
+            'institution_id' => $institutionId,
             'location' => $request->location,
             'bio' => $request->bio,
             'timezone' => $request->timezone,
@@ -141,12 +167,15 @@ class AuthController extends Controller
             'middle_name' => $user->middle_name,
             'last_name' => $user->last_name,
             'email' => $user->email,
+            'phone' => $user->phone,
+            'phone_number' => $user->phone,
             'must_change_password' => $user->must_change_password,
             'last_login_at' => $user->last_login_at,
             'department_id' => $user->department_id,
             'institution_id' => $user->institution_id,
             'is_active' => $user->is_active,
             'avatar' => $user->avatar_url,
+            'avatar_url' => $user->avatar_url,
             'email_verified_at' => $user->email_verified_at,
             'created_at' => $user->created_at,
             'updated_at' => $user->updated_at,
@@ -371,11 +400,14 @@ class AuthController extends Controller
             'middle_name' => $user->middle_name,
             'last_name' => $user->last_name,
             'email' => $user->email,
+            'phone' => $user->phone,
+            'phone_number' => $user->phone,
             'last_login_at' => $user->last_login_at,
             'department_id' => $user->department_id,
             'institution_id' => $user->institution_id,
             'is_active' => $user->is_active,
             'avatar' => $user->avatar_url,
+            'avatar_url' => $user->avatar_url,
             'email_verified_at' => $user->email_verified_at,
             'created_at' => $user->created_at,
             'updated_at' => $user->updated_at,
@@ -387,5 +419,16 @@ class AuthController extends Controller
         ];
 
         return $this->successResponse($userData, 'User data retrieved successfully');
+    }
+
+    public function lookupUserForRegistration(Request $request, $identifier, \App\Integrations\Contracts\UserIntegrationInterface $integration)
+    {
+        $userData = $integration->lookupUser($identifier);
+        
+        if (!$userData) {
+            return $this->errorResponse('User details not found or external system unavailable.', 404);
+        }
+        
+        return $this->successResponse($userData, 'User details fetched successfully');
     }
 }

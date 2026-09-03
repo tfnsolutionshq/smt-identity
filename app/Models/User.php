@@ -25,6 +25,7 @@ class User extends Authenticatable
         'last_name',
         'email',
         'phone',
+        'phone_number',
         'password',
         'must_change_password',
         'role_id',
@@ -32,6 +33,7 @@ class User extends Authenticatable
         'department_id',
         'is_active',
         'avatar',
+        'avatar_url',
         'signature',
         'location',
         'bio',
@@ -39,6 +41,11 @@ class User extends Authenticatable
         'language',
         'last_login_at',
         'email_verified_at',
+    ];
+
+    protected $appends = [
+        'phone_number',
+        'avatar_url',
     ];
 
     protected $hidden = [
@@ -155,5 +162,20 @@ class User extends Authenticatable
         // }
 
         return asset('storage/' . $this->avatar);
+    }
+
+    public function setAvatarUrlAttribute(?string $value): void
+    {
+        $this->attributes['avatar'] = $value;
+    }
+
+    public function getPhoneNumberAttribute(): ?string
+    {
+        return $this->attributes['phone'] ?? null;
+    }
+
+    public function setPhoneNumberAttribute(?string $value): void
+    {
+        $this->attributes['phone'] = $value;
     }
 }

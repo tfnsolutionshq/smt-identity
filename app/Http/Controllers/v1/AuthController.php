@@ -94,6 +94,7 @@ class AuthController extends Controller
             'user_name' => $user->first_name . ' ' . $user->last_name,
             'email' => $user->email,
             'password' => $request->password,
+            'login_url' => rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000')), '/') . '/login',
         ]);
 
         $token = $user->createToken('auth')->plainTextToken;

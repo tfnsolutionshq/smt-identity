@@ -50,6 +50,7 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation
             'user_name' => $firstName . ' ' . $lastName,
             'email' => $user->email,
             'password' => $defaultPassword,
+            'login_url' => rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000')), '/') . '/login',
         ]);
         
         return $user;

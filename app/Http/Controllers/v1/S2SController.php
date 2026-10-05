@@ -36,9 +36,15 @@ class S2SController extends Controller
     public function getUsersByDepartment(Request $request)
     {
         $departmentId = $request->input('department_id');
-        $users = User::with(['department', 'role'])
-            ->where('department_id', $departmentId)
-            ->get();
+        $isNone = empty($departmentId) || strtolower((string)$departmentId) === 'none' || $departmentId === 'null';
+
+        $query = User::with(['department', 'role']);
+
+        if (!$isNone) {
+            $query->where('department_id', $departmentId);
+        }
+
+        $users = $query->get();
 
         return response()->json(['users' => $users]);
     }

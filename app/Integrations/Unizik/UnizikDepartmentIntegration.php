@@ -3,10 +3,10 @@
 namespace App\Integrations\Unizik;
 
 use App\Integrations\Contracts\DepartmentIntegrationInterface;
+use App\Models\Department;
 use App\Models\Institution;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -14,72 +14,91 @@ use Illuminate\Support\Facades\Log;
 class UnizikDepartmentIntegration implements DepartmentIntegrationInterface
 {
     /**
-     * Fetch departments from the Unizik API.
+     * Fetch departments from the local database (persisted from Unizik API).
      *
      * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Pagination\LengthAwarePaginator
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      */
     public function getDepartments(Request $request)
     {
-        $apiUrl = env('EXTERNAL_DEPARTMENT_API_URL', 'https://cirs.unizik.edu.ng/dashboard/app/hrms/offices?api');
-        $facdiv = $request->get('facdiv') ?? $request->get('faculty');
+        $institution = $this->resolveInstitution($request);
+        $institutionId = $institution?->id ?? null;
         $forceRefresh = $request->boolean('refresh') || $request->get('refresh') === '1';
 
-        try {
-            if ($facdiv) {
-                $departments = $this->fetchDepartmentsForFaculty($apiUrl, $facdiv, $forceRefresh);
-            } else {
-                $departments = $this->fetchAllDepartments($apiUrl, $forceRefresh);
+        // If local database has no departments for this institution or refresh requested, sync from remote API
+        $hasLocalDepartments = $institutionId 
+            ? Department::where('institution_id', $institutionId)->exists() 
+            : Department::exists();
+
+        if ($forceRefresh || !$hasLocalDepartments) {
+            $this->syncFromRemote($institutionId, $forceRefresh);
+        }
+
+        $perPage = (int) $request->get('per_page', 20);
+        $page = (int) $request->get('page', 1);
+        $search = $request->get('search');
+        $facdiv = $request->get('facdiv') ?? $request->get('faculty');
+
+        $cacheKey = 'unizik_dept_db_' . md5(json_encode([
+            'institution_id' => $institutionId,
+            'search' => $search,
+            'facdiv' => $facdiv,
+            'per_page' => $perPage,
+            'page' => $page,
+        ]));
+
+        if ($forceRefresh) {
+            Cache::forget($cacheKey);
+        }
+
+        return Cache::remember($cacheKey, now()->addWeek(), function () use ($institutionId, $search, $facdiv, $perPage) {
+            $query = Department::query()->with('institution');
+
+            if ($institutionId) {
+                $query->where('institution_id', $institutionId);
             }
 
-            // Resolve institution to ensure frontend contract compatibility
-            $institution = $this->resolveInstitution($request);
-            $institutionData = $institution ? $institution->toArray() : null;
-            $institutionId = $institution?->id ?? null;
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('department_code', 'like', "%{$search}%");
+                });
+            }
 
-            // Just-In-Time (JIT) sync to local database to satisfy MySQL foreign keys
+            if ($facdiv) {
+                $query->where(function ($q) use ($facdiv) {
+                    $q->where('department_code', 'like', "{$facdiv}%")
+                      ->orWhere('name', 'like', "%{$facdiv}%");
+                });
+            }
+
+            return $query->paginate($perPage);
+        });
+    }
+
+    /**
+     * Sync departments from remote Unizik API into the local database.
+     *
+     * @param string|null $institutionId
+     * @param bool $forceRefresh
+     * @return array
+     */
+    public function syncFromRemote(?string $institutionId, bool $forceRefresh = false): array
+    {
+        $apiUrl = env('EXTERNAL_DEPARTMENT_API_URL', 'https://cirs.unizik.edu.ng/dashboard/app/hrms/offices?api');
+
+        try {
+            $departments = $this->fetchAllDepartments($apiUrl, $forceRefresh);
+
             if ($institutionId && !empty($departments)) {
                 $this->syncToLocalDatabase($departments, $institutionId);
             }
 
-            // Attach institution object and standard department properties
-            $departments = array_map(function ($dept) use ($institutionId, $institutionData) {
-                return array_merge($dept, [
-                    'institution_id' => $institutionId,
-                    'head_id' => null,
-                    'description' => null,
-                    'created_at' => null,
-                    'updated_at' => null,
-                    'institution' => $institutionData,
-                ]);
-            }, $departments);
-
-            // Search filter
-            if ($search = $request->get('search')) {
-                $departments = array_values(array_filter($departments, function ($item) use ($search) {
-                    return stripos($item['name'] ?? '', $search) !== false
-                        || stripos($item['department_code'] ?? '', $search) !== false
-                        || stripos($item['department_name'] ?? '', $search) !== false
-                        || stripos($item['faculty_name'] ?? '', $search) !== false;
-                }));
-            }
-
-            // Pagination
-            $perPage = (int) $request->get('per_page', 20);
-            $page = (int) $request->get('page', 1);
-            $total = count($departments);
-
-            $slice = array_slice($departments, ($page - 1) * $perPage, $perPage);
-
-            return new LengthAwarePaginator($slice, $total, $perPage, $page, [
-                'path' => $request->url(),
-                'query' => $request->query(),
-            ]);
-        } catch (\Exception $e) {
-            Log::error("Unizik Department API Error: " . $e->getMessage());
+            return $departments;
+        } catch (\Throwable $e) {
+            Log::error("Unizik Department Sync Error: " . $e->getMessage());
+            return [];
         }
-
-        return new LengthAwarePaginator([], 0, (int) $request->get('per_page', 20));
     }
 
     /**
@@ -106,7 +125,7 @@ class UnizikDepartmentIntegration implements DepartmentIntegrationInterface
     }
 
     /**
-     * Just-In-Time (JIT) sync departments to local database to satisfy foreign keys.
+     * Persist departments into local database.
      *
      * @param array $departments
      * @param string $institutionId
@@ -137,7 +156,7 @@ class UnizikDepartmentIntegration implements DepartmentIntegrationInterface
 
             if (!empty($records)) {
                 foreach (array_chunk($records, 100) as $chunk) {
-                    \App\Models\Department::upsert(
+                    Department::upsert(
                         $chunk,
                         ['id'],
                         ['name', 'department_code', 'institution_id', 'is_active', 'updated_at']
@@ -145,12 +164,12 @@ class UnizikDepartmentIntegration implements DepartmentIntegrationInterface
                 }
             }
         } catch (\Exception $e) {
-            Log::warning("JIT Department sync warning: " . $e->getMessage());
+            Log::warning("Department database sync warning: " . $e->getMessage());
         }
     }
 
     /**
-     * Fetch all departments across all faculties and units.
+     * Fetch all departments across all faculties and units from external API.
      *
      * @param string $apiUrl
      * @param bool $forceRefresh
@@ -164,8 +183,13 @@ class UnizikDepartmentIntegration implements DepartmentIntegrationInterface
             Cache::forget($cacheKey);
         }
 
-        return Cache::remember($cacheKey, now()->addHours(6), function () use ($apiUrl) {
-            $response = Http::timeout(15)->get($apiUrl);
+        return Cache::remember($cacheKey, now()->addWeek(), function () use ($apiUrl) {
+            try {
+                $response = Http::timeout(30)->get($apiUrl);
+            } catch (\Throwable $e) {
+                Log::warning("Failed to fetch root faculties from Unizik API: " . $e->getMessage());
+                return [];
+            }
 
             if (!$response->successful()) {
                 return [];
@@ -176,116 +200,56 @@ class UnizikDepartmentIntegration implements DepartmentIntegrationInterface
                 return [];
             }
 
-            // Fetch sub-offices/departments in parallel for all parent faculties and units
-            $responses = Http::pool(function (Pool $pool) use ($parents, $apiUrl) {
-                return array_map(function ($parent) use ($pool, $apiUrl) {
-                    $code = $parent['code'] ?? '';
-                    return $pool->as($code)->timeout(15)->get($apiUrl . '&facdiv=' . urlencode($code));
-                }, $parents);
-            });
-
             $departments = [];
+            $chunks = array_chunk($parents, 20);
 
-            foreach ($parents as $parent) {
-                $parentCode = $parent['code'] ?? '';
-                $parentName = trim($parent['name'] ?? '');
-                $parentType = $parent['type'] ?? 'Faculty';
+            // Fetch sub-offices/departments in parallel chunks across all parent faculties and units
+            foreach ($chunks as $chunk) {
+                $responses = Http::pool(function (Pool $pool) use ($chunk, $apiUrl) {
+                    return array_map(function ($parent) use ($pool, $apiUrl) {
+                        $code = $parent['code'] ?? '';
+                        return $pool->as($code)->timeout(20)->get($apiUrl . '&facdiv=' . urlencode($code));
+                    }, $chunk);
+                });
 
-                if (isset($responses[$parentCode]) && $responses[$parentCode]->successful()) {
-                    $subItems = $responses[$parentCode]->json();
+                foreach ($chunk as $parent) {
+                    $parentCode = $parent['code'] ?? '';
+                    $parentName = trim($parent['name'] ?? '');
+                    $parentType = $parent['type'] ?? 'Faculty';
 
-                    if (is_array($subItems)) {
-                        foreach ($subItems as $subItem) {
-                            $deptCode = $subItem['code'] ?? null;
-                            $deptName = trim($subItem['name'] ?? 'Unknown');
-                            $type = $subItem['type'] ?? 'Department';
+                    $resp = $responses[$parentCode] ?? null;
 
-                            // Format: "DEPARTMENT - FACULTY" (e.g. "COMPUTER SCIENCE - FACULTY OF PHYSICAL SCIENCES")
-                            $displayName = $parentName ? "{$deptName} - {$parentName}" : $deptName;
+                    if ($resp instanceof \Illuminate\Http\Client\Response && $resp->successful()) {
+                        $subItems = $resp->json();
 
-                            $departments[] = [
-                                'id' => $deptCode,
-                                'name' => $displayName,
-                                'department_name' => $deptName,
-                                'faculty_name' => $parentName,
-                                'department_code' => $deptCode,
-                                'parent_code' => $parentCode,
-                                'parent_type' => $parentType,
-                                'type' => $type,
-                                'is_active' => 1,
-                            ];
+                        if (is_array($subItems)) {
+                            foreach ($subItems as $subItem) {
+                                $deptCode = $subItem['code'] ?? null;
+                                $deptName = trim($subItem['name'] ?? 'Unknown');
+                                $type = $subItem['type'] ?? 'Department';
+
+                                // Format: "DEPARTMENT - FACULTY" (e.g. "COMPUTER SCIENCE - FACULTY OF PHYSICAL SCIENCES")
+                                $displayName = $parentName ? "{$deptName} - {$parentName}" : $deptName;
+
+                                $departments[] = [
+                                    'id' => $deptCode,
+                                    'name' => $displayName,
+                                    'department_name' => $deptName,
+                                    'faculty_name' => $parentName,
+                                    'department_code' => $deptCode,
+                                    'parent_code' => $parentCode,
+                                    'parent_type' => $parentType,
+                                    'type' => $type,
+                                    'is_active' => 1,
+                                ];
+                            }
                         }
                     }
                 }
-            }
-
-            return $departments;
-        });
-    }
-
-    /**
-     * Fetch departments for a single faculty/division code.
-     *
-     * @param string $apiUrl
-     * @param string $facdiv
-     * @param bool $forceRefresh
-     * @return array
-     */
-    protected function fetchDepartmentsForFaculty(string $apiUrl, string $facdiv, bool $forceRefresh = false): array
-    {
-        $cacheKey = 'unizik_dept_faculty_' . $facdiv;
-
-        if ($forceRefresh) {
-            Cache::forget($cacheKey);
-        }
-
-        return Cache::remember($cacheKey, now()->addHours(6), function () use ($apiUrl, $facdiv) {
-            $subResponse = Http::timeout(15)->get($apiUrl . '&facdiv=' . urlencode($facdiv));
-
-            if (!$subResponse->successful()) {
-                return [];
-            }
-
-            $subItems = $subResponse->json();
-            if (!is_array($subItems)) {
-                return [];
-            }
-
-            // Find parent faculty name
-            $parentName = '';
-            $rootResponse = Http::timeout(15)->get($apiUrl);
-            if ($rootResponse->successful()) {
-                $parents = $rootResponse->json();
-                if (is_array($parents)) {
-                    foreach ($parents as $p) {
-                        if (($p['code'] ?? '') === $facdiv) {
-                            $parentName = trim($p['name'] ?? '');
-                            break;
-                        }
-                    }
-                }
-            }
-
-            $departments = [];
-            foreach ($subItems as $subItem) {
-                $deptCode = $subItem['code'] ?? null;
-                $deptName = trim($subItem['name'] ?? 'Unknown');
-                $type = $subItem['type'] ?? 'Department';
-                $displayName = $parentName ? "{$deptName} - {$parentName}" : $deptName;
-
-                $departments[] = [
-                    'id' => $deptCode,
-                    'name' => $displayName,
-                    'department_name' => $deptName,
-                    'faculty_name' => $parentName,
-                    'department_code' => $deptCode,
-                    'parent_code' => $facdiv,
-                    'type' => $type,
-                    'is_active' => 1,
-                ];
             }
 
             return $departments;
         });
     }
 }
+

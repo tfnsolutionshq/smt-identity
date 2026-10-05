@@ -57,11 +57,17 @@ class UserService
 
     public function getByDepartment($departmentId)
     {
-        $users = User::with(['department', 'role'])
+        $isNone = empty($departmentId) || strtolower((string)$departmentId) === 'none' || $departmentId === 'null';
+
+        $query = User::with(['department', 'role'])
             ->sameInstitution()
-            ->excludeCurrentUser()
-            ->where('department_id', $departmentId)
-            ->get();
+            ->excludeCurrentUser();
+
+        if (!$isNone) {
+            $query->where('department_id', $departmentId);
+        }
+
+        $users = $query->get();
             
         $users->transform(function ($user) {
             $user->approval_stats = $this->memoService->getUserApprovalStats($user->id);
@@ -69,7 +75,7 @@ class UserService
             return $user;
         });
 
-        return $this->successResponse($users, 'Users in department');
+        return $this->successResponse($users, $isNone ? 'Users fetched successfully' : 'Users in department');
     }
 
     public function getUser($id, $auth_user)

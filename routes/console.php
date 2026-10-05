@@ -8,5 +8,5 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('integration:sync-departments')->daily();
+Schedule::command('integration:sync-departments --refresh')->weekly();
 

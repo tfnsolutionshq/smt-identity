@@ -127,7 +127,7 @@ class AuthController extends Controller
         if (! $user || ! Hash::check($request->password, $user->password)) {
             $this->logFailedLogin($request->email, 'invalid_credentials');
 
-            return $this->errorResponse('The email address or password you entered is incorrect. Pleas check and try again.', 401);
+            return $this->errorResponse('The email address or password you entered is incorrect. Please check and try again.', 401);
         }
 
         // if ($user->must_change_password) {
@@ -425,11 +425,11 @@ class AuthController extends Controller
     public function lookupUserForRegistration(Request $request, $identifier, \App\Integrations\Contracts\UserIntegrationInterface $integration)
     {
         $userData = $integration->lookupUser($identifier);
-        
+
         if (!$userData) {
             return $this->errorResponse('User details not found or external system unavailable.', 404);
         }
-        
+
         return $this->successResponse($userData, 'User details fetched successfully');
     }
 }

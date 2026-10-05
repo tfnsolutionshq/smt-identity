@@ -24,8 +24,7 @@ class UserService
         $perPage = $request->get('per_page', 20);
         $query = User::with(['department', 'role'])
             ->sameInstitution()
-            ->excludeCurrentUser()
-            ->active();
+            ->excludeCurrentUser();
 
         $users = $query->paginate($perPage);
         

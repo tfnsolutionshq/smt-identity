@@ -26,6 +26,19 @@ class UserService
             ->sameInstitution()
             ->excludeCurrentUser();
 
+        $search = $request->get('search') ?? $request->get('q');
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('middle_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhereRaw("CONCAT_WS(' ', first_name, last_name) LIKE ?", ["%{$search}%"])
+                  ->orWhereRaw("CONCAT_WS(' ', first_name, middle_name, last_name) LIKE ?", ["%{$search}%"]);
+            });
+        }
+
         $users = $query->paginate($perPage);
         
         $users->getCollection()->transform(function ($user) {
@@ -54,8 +67,9 @@ class UserService
         return $this->successResponse($users, 'Users with role: ' . $role);
     }
 
-    public function getByDepartment($departmentId)
+    public function getByDepartment($departmentId, $request = null)
     {
+        $request = $request ?? request();
         $isNone = empty($departmentId) || strtolower((string)$departmentId) === 'none' || $departmentId === 'null';
 
         $query = User::with(['department', 'role'])
@@ -66,13 +80,46 @@ class UserService
             $query->where('department_id', $departmentId);
         }
 
-        $users = $query->get();
-            
-        $users->transform(function ($user) {
-            $user->approval_stats = $this->memoService->getUserApprovalStats($user->id);
-            $user->avatar = $user->avatar_url;
-            return $user;
-        });
+        $search = $request->get('search') ?? $request->get('q');
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('middle_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhereRaw("CONCAT_WS(' ', first_name, last_name) LIKE ?", ["%{$search}%"])
+                  ->orWhereRaw("CONCAT_WS(' ', first_name, middle_name, last_name) LIKE ?", ["%{$search}%"]);
+            });
+        }
+
+        if ($role = $request->get('role')) {
+            $query->where(function ($q) use ($role) {
+                $q->where('role_id', $role)
+                  ->orWhereHas('role', function ($rq) use ($role) {
+                      $rq->where('name', $role);
+                  });
+            });
+        }
+
+        if ($request->has('per_page') || $request->has('page') || $request->boolean('paginate')) {
+            $perPage = (int) $request->get('per_page', 20);
+            $users = $query->paginate($perPage);
+
+            $users->getCollection()->transform(function ($user) {
+                $user->approval_stats = $this->memoService->getUserApprovalStats($user->id);
+                $user->avatar = $user->avatar_url;
+                return $user;
+            });
+        } else {
+            $users = $query->get();
+
+            $users->transform(function ($user) {
+                $user->approval_stats = $this->memoService->getUserApprovalStats($user->id);
+                $user->avatar = $user->avatar_url;
+                return $user;
+            });
+        }
 
         return $this->successResponse($users, $isNone ? 'Users fetched successfully' : 'Users in department');
     }
